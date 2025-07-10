@@ -1,0 +1,6 @@
+*.o
+write_gpt
+
+*.img
+
+.vscode/
