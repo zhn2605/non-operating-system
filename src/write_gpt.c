@@ -13,6 +13,7 @@ uint64_t esp_size = 1024*1024*33;       // 33 MiB
 uint64_t data_size = 1024*1024*1;       // 1 MiB
 uint64_t image_size = 0;
 uint64_t esp_lbas, data_lbas, image_size_lbas;
+uint32_t crc_table[256];
 
 // 16 byte MBR partition
 typedef struct {

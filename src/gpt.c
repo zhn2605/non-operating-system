@@ -4,6 +4,8 @@
 #include <string.h>
 #include <time.h>
 
+static uint32_t crc_table[256];
+
 // Create vers 4 Variant 2 GUID
 Guid new_guid(void) {
     uint8_t rand_arr[16] = { 0 };
@@ -56,8 +58,6 @@ bool write_gpt(FILE *image, uint64_t image_size_lbas) {
     };
 
     // TODO: 
-    // Calc CRC32
-    // Get version 4 variant 2 GUID
     // Fill out primary table entries
     // Fill out CRC
     // write gpt header to file
@@ -65,4 +65,39 @@ bool write_gpt(FILE *image, uint64_t image_size_lbas) {
     // write alternate header and table
 
     return true;
+}
+
+// Create CRC32 table values
+void create_crc32_table(void) {
+    uint32_t c;
+
+    for(int32_t n = 0; n < 256; n++) {
+        c = (uint32_t)n;
+        for (int32_t k = 0; k < 8; k++) {
+            if (c & 1)
+                c = 0xedb88320L ^ (c >> 1); // magic constant
+            else
+                c = c >> 1;
+        }
+        crc_table[n] = c;
+    }
+}
+
+uint32_t calculate_crc32(const void *buf, int32_t len) {
+    static bool made_crc_table = false;
+
+    const uint8_t *bufp = buf;
+    uint32_t c = 0xFFFFFFFFL;
+
+    if (!made_crc_table) {
+        create_crc32_table();
+        made_crc_table = true;
+    }
+
+    for (int32_t n = 0; n < len; n++) {
+        c = crc_table[(c ^ bufp[n]) & 0xFF] ^ (c >> 8);
+    }
+
+    // invert bits to return value
+    return c ^ 0xFFFFFFFFL;
 }
