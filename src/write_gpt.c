@@ -5,14 +5,15 @@
 #include <time.h>
 
 #include "gpt.h"
+#include "gpt_constants.h"
 
 // Globals
 char *image_name = "test.img";
-uint64_t lba_size = 512;
 uint64_t esp_size = 1024*1024*33;       // 33 MiB
 uint64_t data_size = 1024*1024*1;       // 1 MiB
 uint64_t image_size = 0;
-uint64_t esp_lbas, data_lbas, image_size_lbas;
+uint64_t image_size_lbas = 0, esp_size_lbas = 0, data_size_lbas = 0;
+uint64_t esp_lba = 0, data_lba = 0;
 uint32_t crc_table[256];
 
 // 16 byte MBR partition
@@ -40,16 +41,8 @@ typedef struct {
 
 // Convert bytes to LBAs
 uint64_t bytes_to_lbas(const uint64_t bytes) {
-    return (bytes / lba_size) + (bytes % lba_size > 0 ? 1 : 0); 
+    return (bytes / LBA_SIZE) + (bytes % LBA_SIZE > 0 ? 1 : 0); 
     // add extra lba in case of partial byte count
-}
-
-// Pad out 0s for bigger lbas
-void write_full_lba_size(FILE* image) {
-    uint8_t zero_sector[512];
-    for (uint8_t i = 0; i < (lba_size - sizeof zero_sector) / sizeof zero_sector; i++) {
-        fwrite(zero_sector, sizeof zero_sector, 1, image);
-    }
 }
 
 // Write protective MBR
@@ -77,7 +70,7 @@ bool write_mbr(FILE *image) {
     }
 
     // fill out lba
-    write_full_lba_size(image);
+    write_full_lba_size(image, LBA_SIZE);
     
     return true;
 }
@@ -93,8 +86,12 @@ int main(void) {
     }
 
     // Set size
-    image_size = esp_size + data_size + (1024*1024); // add padding
+    const uint64_t padding = (ALIGNMENT*2 + (LBA_SIZE * 67)); // extra padding for GPTs/MBR
+    image_size = esp_size + data_size + (padding); // add padding
     image_size_lbas = bytes_to_lbas(image_size);
+    esp_size_lbas = bytes_to_lbas(esp_size);
+    data_size_lbas = bytes_to_lbas(data_size);
+
 
     // Seed rand
     srand(time(NULL));
@@ -106,7 +103,7 @@ int main(void) {
     }    
 
     // Write GPT headers & tables
-    if (!write_gpt(image, image_size_lbas)) {
+    if (!write_gpt(image, image_size_lbas, esp_size_lbas, data_size_lbas)) {
         fprintf(stderr, "Error: could not write GPT headers & tables for file %s\n", image_name);
         return EXIT_FAILURE;
     } 

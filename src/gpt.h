@@ -4,8 +4,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdbool.h>
-
-#define LBA_SIZE 512
+#include <uchar.h>
 
 // Globally Unique Identifier
 typedef struct {
@@ -33,13 +32,21 @@ typedef struct {
     uint32_t number_of_entries;
     uint32_t size_of_entry;
     uint32_t partition_table_crc32;
-
     uint8_t reserved_2[512-92];
 } __attribute__ ((packed)) Gpt_Header;
 
+typedef struct {
+    Guid partition_type_guid;
+    Guid unique_guid;
+    uint64_t starting_lba;
+    uint64_t ending_lba;
+    uint64_t attributes;
+    char16_t name[36]; // UCS-2 (UTF-16 limited to code points 0x0000 - 0xFFFF)
+} __attribute__ ((packed)) Gpt_Partition_Entry;
+
 // Functions
 Guid new_guid(void);
-
-bool write_gpt(FILE* image, uint64_t image_size_lbas);
+bool write_gpt(FILE* image, uint64_t image_size_lbas, uint64_t esp_size_lbas, uint64_t data_size_lbas);
+void write_full_lba_size(FILE* image, uint64_t lba_size);
 
 #endif
