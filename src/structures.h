@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include <uchar.h>
 
-// 16 byte MBR partition
 typedef struct {
     uint8_t boot_indicator;
     uint8_t starting_chs[3];
@@ -14,16 +13,14 @@ typedef struct {
     uint32_t size_lba;
 } __attribute__ ((packed)) Mbr_Partition;
 
-// Master Boot Record
 typedef struct {
     uint8_t boot_code[440];
     uint32_t mbr_signature;
-    uint16_t unkown; // 2 bytes unkown
-    Mbr_Partition partition[4]; // define first partition
+    uint16_t unkown;
+    Mbr_Partition partition[4];
     uint16_t boot_signature;
 } __attribute__ ((packed)) Mbr;
 
-// Globally Unique Identifier
 typedef struct {
     uint32_t time_low;
     uint16_t time_mid;
@@ -33,7 +30,6 @@ typedef struct {
     uint8_t node[6];
 } __attribute__ ((packed)) Guid;
 
-// GPT Header
 typedef struct {
     uint8_t signature[8];
     uint32_t revision;
@@ -58,10 +54,9 @@ typedef struct {
     uint64_t starting_lba;
     uint64_t ending_lba;
     uint64_t attributes;
-    char16_t name[36]; // UCS-2 (UTF-16 limited to code points 0x0000 - 0xFFFF)
+    char16_t name[36];
 } __attribute__ ((packed)) Gpt_Partition_Entry;
 
-// FAT32 Volume Boot Record
 typedef struct {
     uint8_t     BS_jmpBoot[3];
     uint8_t     BS_OEMName[8];
@@ -90,12 +85,10 @@ typedef struct {
     uint8_t     BS_VolID[4];
     uint8_t     BS_VolLab[11];
     uint8_t     BS_FilSysType[8];
-
     uint8_t     boot_code[510-90];
-    uint16_t    bootsect_sig;   // 0xAA55
+    uint16_t    bootsect_sig;
 } __attribute__ ((packed)) Vbr;
 
-// FAT32 File System Info Sector
 typedef struct {
     uint32_t FSI_LeadSig;
     uint8_t FSI_Reserved1[480];
@@ -106,7 +99,6 @@ typedef struct {
     uint32_t FSI_TrailSig;
 } __attribute__ ((packed)) FSInfo;
 
-// FAT32 Directory Entry (Short name ver)
 typedef struct {
     uint8_t DIR_Name[11];
     uint8_t DIR_Attr;
@@ -122,7 +114,6 @@ typedef struct {
     uint32_t DIR_FileSize;
 } __attribute__ ((packed)) FAT32_Dir_Entry_Short;
 
-// FAT32 Directory Entry Attributes
 typedef enum {
     ATTR_READ_ONLY  = 0x01,
     ATTR_HIDDEN     = 0x02,
