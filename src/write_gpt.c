@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 #include "gpt.h"
@@ -82,10 +83,33 @@ typedef struct {
     uint32_t FSI_TrailSig;
 } __attribute__ ((packed)) FSInfo;
 
-// FAT32 Directory Entry
+// FAT32 Directory Entry (Short name ver)
 typedef struct {
-
+    uint8_t DIR_Name[11];
+    uint8_t DIR_Attr;
+    uint8_t DIR_NTRes;
+    uint8_t DIR_CrtTimeTenth;
+    uint16_t DIR_CrtTime;
+    uint16_t DIR_CrtDate;
+    uint16_t DIR_LastAccDate;
+    uint16_t DIR_FstClusHI;
+    uint16_t DIR_WrtTime;
+    uint16_t DIR_WrtDate;
+    uint16_t DIR_FstClusLO;
+    uint32_t DIR_FileSize;
 } __attribute__ ((packed)) FAT32_Dir_Entry_Short;
+
+// FAT32 Directory Entry Attributes
+typedef enum {
+    ATTR_READ_ONLY  = 0x01,
+    ATTR_HIDDEN     = 0x02,
+    ATTR_SYSTEM     = 0x04,
+    ATTR_VOLUME_ID  = 0x08,
+    ATTR_DIRECTORY  = 0x10,
+    ATTR_ARCHIVE    = 0x20,
+    ATTR_LONG_NAME  = ATTR_READ_ONLY    | ATTR_HIDDEN |
+                      ATTR_SYSTEM       | ATTR_VOLUME_ID, 
+} FAT32_Dir_Attr;
 
 //===================================================================================
 //===================================================================================
@@ -94,6 +118,21 @@ typedef struct {
 uint64_t bytes_to_lbas(const uint64_t bytes) {
     return (bytes / LBA_SIZE) + (bytes % LBA_SIZE > 0 ? 1 : 0); 
     // add extra lba in case of partial byte count
+}
+
+void get_fat_dir_entry_time_date(uint16_t *in_time, uint16_t *in_date) {
+    time_t curr_time;
+    curr_time = time(NULL);
+    struct tm tm = *localtime(&curr_time);
+
+    // FAT32 relative to 1980, 
+    // tm relative to 1900, 
+    // thus subtract 80
+    *in_date = ((tm.tm_year - 80) << 9) | (tm.tm_mon + 1) << 5 | (tm.tm_mday);      
+    
+    // Seconds is 2 second count, 0-29
+    if (tm.tm_sec == 60) tm.tm_sec = 59;
+    *in_time = (tm.tm_hour) << 11 | (tm.tm_min) << 5 | (tm.tm_sec) / 2;
 }
 
 // Write protective MBR
@@ -176,14 +215,14 @@ bool write_esp(FILE* image) {
 
     // write vbr and fs info
     fseek(image, esp_lba * LBA_SIZE, SEEK_SET);
-    if ((fwrite(&vbr, 1, sizeof vbr, image)) != sizeof vbr) {
-        printf("Error: Could not write ESP VBR to image\n");
+    if (fwrite(&vbr, 1, sizeof vbr, image) != sizeof vbr) {
+        fprintf(stderr, "Error: Could not write ESP VBR to image\n");
         return false;
     }
     write_full_lba_size(image, LBA_SIZE);
 
-    if ((fwrite(&fsinfo, 1, sizeof fsinfo, image)) != sizeof fsinfo) {
-        printf("Error: Could not write ESP FSInfo to image\n");
+    if (fwrite(&fsinfo, 1, sizeof fsinfo, image) != sizeof fsinfo) {
+        fprintf(stderr, "Error: Could not write ESP FSInfo to image\n");
         return false;
     }
     write_full_lba_size(image, LBA_SIZE);
@@ -193,8 +232,8 @@ bool write_esp(FILE* image) {
 
     // write vbr abd fs info
     fseek(image, esp_lba * LBA_SIZE, SEEK_SET);
-    if ((fwrite(&vbr, 1, sizeof vbr, image)) != sizeof vbr) {
-        printf("Error: Could not write VBR to image\n");
+    if (fwrite(&vbr, 1, sizeof vbr, image) != sizeof vbr) {
+        fprintf(stderr, "Error: Could not write VBR to image\n");
         return false;
     }
     write_full_lba_size(image, LBA_SIZE);
@@ -233,8 +272,54 @@ bool write_esp(FILE* image) {
     fseek(image, data_lba * LBA_SIZE, SEEK_SET);
 
     // root directory
-    // /efi directory
-    // /boot directory
+    FAT32_Dir_Entry_Short dir_ent = {
+        .DIR_Name = { "EFI        " },
+        .DIR_Attr = ATTR_DIRECTORY,
+        .DIR_NTRes = 0,
+        .DIR_CrtTimeTenth = 0,
+        .DIR_CrtTime = 0,
+        .DIR_CrtDate = 0,
+        .DIR_LastAccDate = 0,   // Last access date
+        .DIR_FstClusHI = 0,     // First cluster high
+        .DIR_WrtTime = 0,
+        .DIR_WrtDate = 0,
+        .DIR_FstClusLO = 3,     // First cluster low
+        .DIR_FileSize = 0,      // Directories have 0 file size
+    };
+
+    uint16_t create_time = 0, create_date = 0;
+    get_fat_dir_entry_time_date(&create_time, &create_date);
+
+    dir_ent.DIR_CrtTime = create_time;
+    dir_ent.DIR_CrtTime = create_time;
+    dir_ent.DIR_WrtTime = create_time;
+    dir_ent.DIR_WrtDate = create_date;
+
+    fwrite(&dir_ent, sizeof dir_ent, 1, image);
+    
+    // "/EFI" directory entries
+    fseek(image, (data_lba + 1) * LBA_SIZE, SEEK_SET);
+    
+    memcpy(dir_ent.DIR_Name, ".          ", 11);    // "." dir entry, this directory itself
+    fwrite(&dir_ent, sizeof dir_ent, 1, image);
+    
+    memcpy(dir_ent.DIR_Name, "..         ", 11);    // ".." dir entry, parent dir (ROOT dir)
+    dir_ent.DIR_FstClusLO = 0;                      // Root directory does not have a cluster value
+    fwrite(&dir_ent, sizeof dir_ent, 1, image);
+
+    memcpy(dir_ent.DIR_Name, "BOOT       ", 11);    // /EFI/BOOT directory
+    dir_ent.DIR_FstClusLO = 4;
+    fwrite(&dir_ent, sizeof dir_ent, 1, image);
+
+    // "/EFI/BOOT" directory
+    fseek(image, (data_lba + 2) * LBA_SIZE, SEEK_SET);
+    
+    memcpy(dir_ent.DIR_Name, ".          ", 11);    // "." dir entry, this directory itself
+    fwrite(&dir_ent, sizeof dir_ent, 1, image);
+    
+    memcpy(dir_ent.DIR_Name, "..         ", 11);    // ".." dir entry, parent dir (/EFI dir)
+    dir_ent.DIR_FstClusLO = 3;                      // EFI directory cluster
+    fwrite(&dir_ent, sizeof dir_ent, 1, image);
 
     return true;
 }
