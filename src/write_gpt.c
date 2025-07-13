@@ -201,7 +201,6 @@ bool write_esp(FILE* image) {
         .bootsect_sig = 0xAA55
     };
 
-    //TODO:
     // fill out file system info sector
     FSInfo fsinfo = {
         .FSI_LeadSig = 0x41615252,
@@ -228,18 +227,22 @@ bool write_esp(FILE* image) {
     write_full_lba_size(image, LBA_SIZE);
 
     // go to backup boot sector location
+    // write vbr and fsinfo at back up
     fseek(image, (esp_lba  + vbr.BPB_BkBootSec) * LBA_SIZE, SEEK_SET);
-
-    // write vbr abd fs info
-    fseek(image, esp_lba * LBA_SIZE, SEEK_SET);
     if (fwrite(&vbr, 1, sizeof vbr, image) != sizeof vbr) {
         fprintf(stderr, "Error: Could not write VBR to image\n");
         return false;
     }
     write_full_lba_size(image, LBA_SIZE);
+
+    if (fwrite(&fsinfo, 1, sizeof fsinfo, image) != sizeof fsinfo) {
+        fprintf(stderr, "Error: Could not write ESP FSInfo to image\n");
+        return false;
+    }
+    write_full_lba_size(image, LBA_SIZE);
     
     // write FATs
-    uint32_t fat_lba = esp_lba = vbr.BPB_RsvdSecCnt;
+    const uint32_t fat_lba = esp_lba + vbr.BPB_RsvdSecCnt;
     for (uint8_t i = 0; i < vbr.BPB_NumFATs; i++) {
         fseek(image, (fat_lba + (i*vbr.BPB_FATSz32)) * LBA_SIZE, SEEK_SET); 
         uint32_t cluster = 0;
@@ -357,11 +360,18 @@ int main(void) {
         return EXIT_FAILURE;
     }    
 
+    // TODO:
+    // Better way that uses less paramaters and I don't have to pass in &esp_lba
     // Write GPT headers & tables
-    if (!write_gpt(image, image_size_lbas, esp_size_lbas, data_size_lbas)) {
+    uint64_t calculated_esp_lba, calculated_data_lba;
+    if (!write_gpt(image, image_size_lbas, esp_size_lbas, data_size_lbas, &calculated_esp_lba, &calculated_data_lba)) {
         fprintf(stderr, "Error: could not write GPT headers & tables for file %s\n", image_name);
         return EXIT_FAILURE;
-    } 
+    }
+
+    // reset esp lba after gpt calculations
+    esp_lba = calculated_esp_lba;
+    data_lba = calculated_data_lba;
 
     // Write EFI System Partition
     if (!write_esp(image)) {

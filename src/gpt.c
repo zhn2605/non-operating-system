@@ -20,7 +20,7 @@ const Guid LINUX_DATA_GUID = {
 
 // Pad out 0s for bigger lbas
 void write_full_lba_size(FILE* image, uint64_t lba_size) {
-    uint8_t zero_sector[512];
+    uint8_t zero_sector[512] = {0};
     for (uint8_t i = 0; i < (lba_size - sizeof zero_sector) / sizeof zero_sector; i++) {
         fwrite(zero_sector, sizeof zero_sector, 1, image);
     }
@@ -96,7 +96,7 @@ Guid new_guid(void) {
 }
 
 // Write GPT headers & tables, primary and alternate
-bool write_gpt(FILE *image, uint64_t image_size_lbas, uint64_t esp_size_lbas, uint64_t data_size_lbas) {
+bool write_gpt(FILE *image, uint64_t image_size_lbas, uint64_t esp_size_lbas, uint64_t data_size_lbas, uint64_t *out_esp_lba, uint64_t *out_data_lba) {
     Gpt_Header primary_gpt = {
         .signature = { "EFI PART" },
         .revision = 0x00010000,
@@ -118,6 +118,11 @@ bool write_gpt(FILE *image, uint64_t image_size_lbas, uint64_t esp_size_lbas, ui
     align_lba = ALIGNMENT / LBA_SIZE;
     uint64_t esp_lba = align_lba;
     uint64_t data_lba = next_aligned_lba(esp_lba + esp_size_lbas);
+
+    // retrieve esp lba from this file
+    *out_esp_lba = esp_lba;
+    *out_data_lba = data_lba;
+
     // TODO: 
     // Fill out primary table entries
     Gpt_Partition_Entry gpt_table[NUMBER_OF_GPT_ENTRIES] = {
@@ -126,7 +131,7 @@ bool write_gpt(FILE *image, uint64_t image_size_lbas, uint64_t esp_size_lbas, ui
             .partition_type_guid = ESP_GUID,
             .unique_guid = new_guid(),
             .starting_lba = esp_lba,
-            .ending_lba = esp_lba + esp_size_lbas,
+            .ending_lba = esp_lba + esp_size_lbas - 1,
             .attributes = 0,
             .name = u"EFI SYSTEM" 
         },
@@ -143,6 +148,8 @@ bool write_gpt(FILE *image, uint64_t image_size_lbas, uint64_t esp_size_lbas, ui
     };
 
     // Fill out CRC
+    primary_gpt.partition_table_crc32 = 0;
+    primary_gpt.header_crc32 = 0;
     primary_gpt.partition_table_crc32 = calculate_crc32(gpt_table, sizeof gpt_table);
     primary_gpt.header_crc32 = calculate_crc32(&primary_gpt, primary_gpt.header_size);
 

@@ -46,7 +46,7 @@ typedef struct {
 
 // Functions
 Guid new_guid(void);
-bool write_gpt(FILE* image, uint64_t image_size_lbas, uint64_t esp_size_lbas, uint64_t data_size_lbas);
+bool write_gpt(FILE* image, uint64_t image_size_lbas, uint64_t esp_size_lbas, uint64_t data_size_lbas, uint64_t *esp_lba, uint64_t *data_lba);
 void write_full_lba_size(FILE* image, uint64_t lba_size);
 
 #endif
