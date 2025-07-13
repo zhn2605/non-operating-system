@@ -1,7 +1,7 @@
 .POSIX:
 .PHONY: all clean
 
-TARGET = write_gpt
+TARGET = main
 CC = gcc
 CFLAGS = -std=c17 -Wall -Wextra -Wpedantic -O2
 
@@ -14,4 +14,4 @@ $(TARGET): $(OBJECTS)
 	$(CC) $(CFLAGS) -o $@ $^
 
 clean:
-	rm -f $(TARGET) *.img
+	rm -f $(TARGET) *.o *.img
