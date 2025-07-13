@@ -370,6 +370,7 @@ int main(void) {
     }
 
     // reset esp lba after gpt calculations
+    // please fix TODO: this is so trash
     esp_lba = calculated_esp_lba;
     data_lba = calculated_data_lba;
 
