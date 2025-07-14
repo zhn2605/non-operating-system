@@ -12,7 +12,7 @@ extern uint64_t esp_size;       // 33 MiB
 extern uint64_t data_size;      // 1 MiB
 extern uint64_t image_size;
 extern uint64_t image_size_lbas, esp_size_lbas, data_size_lbas, gpt_table_lbas;
-extern uint64_t align_lba, esp_lba, data_lba;
+extern uint64_t align_lba, esp_lba, data_lba, fat32_fat_lba, fat32_data_lba;
 extern uint32_t crc_table[256];
 
 // Convert bytes to LBAs

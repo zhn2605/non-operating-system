@@ -53,6 +53,8 @@ bool write_esp(FILE* image) {
         .FSI_TrailSig = 0xAA550000,
     };
 
+    const uint32_t 
+
     // write vbr and fs info
     fseek(image, esp_lba * LBA_SIZE, SEEK_SET);
     if (fwrite(&vbr, 1, sizeof vbr, image) != sizeof vbr) {

@@ -3,7 +3,7 @@
 
 TARGET = main
 CC = gcc
-CFLAGS = -std=c17 -Wall -Wextra -Wpedantic -O2
+CFLAGS = -std=c17 -Wall -Wextra -Wpedantic -O2 -I../include
 
 SOURCES = $(wildcard *.c)
 OBJECTS = $(SOURCES:.c=.o)

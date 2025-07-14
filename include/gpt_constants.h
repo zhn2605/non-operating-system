@@ -1,7 +1,6 @@
 #ifndef GPT_CONSTANTS_H
 #define GPT_CONSTANTS_H
 
-
 enum {
     LBA_SIZE = 512,
     GPT_PARTITION_ENTRY_SIZE = 128,
