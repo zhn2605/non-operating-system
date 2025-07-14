@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
 #include <stdlib.h>
 #include <time.h>
 
@@ -53,7 +54,7 @@ int main(void) {
     FILE *fp = fopen("BOOTX64.EFI", "rb");
     if(fp) {
         fclose(fp);
-        char *path[25] = calloc(1, 25);
+        char *path = calloc(1, 25);
         strcpy(path, "/EFI/BOOT/BOOTX64.EFI");
         if (!add_path_to_esp(path, image)) {
             fprintf(stderr, "Error: Could not add file '%s'\n", path);

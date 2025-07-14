@@ -5,6 +5,6 @@
 #include <stdbool.h>
 
 bool write_esp(FILE* image);
-bool add_path_to_esp(void);
+bool add_path_to_esp(char *path, FILE *image);
 
 #endif

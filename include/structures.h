@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <uchar.h>
 
+// 16 byte mbr partition
 typedef struct {
     uint8_t boot_indicator;
     uint8_t starting_chs[3];
@@ -13,6 +14,7 @@ typedef struct {
     uint32_t size_lba;
 } __attribute__ ((packed)) Mbr_Partition;
 
+// mbr
 typedef struct {
     uint8_t boot_code[440];
     uint32_t mbr_signature;
@@ -21,6 +23,7 @@ typedef struct {
     uint16_t boot_signature;
 } __attribute__ ((packed)) Mbr;
 
+// guid
 typedef struct {
     uint32_t time_low;
     uint16_t time_mid;
@@ -30,6 +33,7 @@ typedef struct {
     uint8_t node[6];
 } __attribute__ ((packed)) Guid;
 
+// gpt header
 typedef struct {
     uint8_t signature[8];
     uint32_t revision;
@@ -48,6 +52,7 @@ typedef struct {
     uint8_t reserved_2[512-92];
 } __attribute__ ((packed)) Gpt_Header;
 
+// gpt partition
 typedef struct {
     Guid partition_type_guid;
     Guid unique_guid;
@@ -57,6 +62,7 @@ typedef struct {
     char16_t name[36];
 } __attribute__ ((packed)) Gpt_Partition_Entry;
 
+// FAT32 volume boot record
 typedef struct {
     uint8_t     BS_jmpBoot[3];
     uint8_t     BS_OEMName[8];
@@ -89,6 +95,7 @@ typedef struct {
     uint16_t    bootsect_sig;
 } __attribute__ ((packed)) Vbr;
 
+// File system info
 typedef struct {
     uint32_t FSI_LeadSig;
     uint8_t FSI_Reserved1[480];
@@ -114,6 +121,7 @@ typedef struct {
     uint32_t DIR_FileSize;
 } __attribute__ ((packed)) FAT32_Dir_Entry_Short;
 
+// FAT32 Directory entry attributes
 typedef enum {
     ATTR_READ_ONLY  = 0x01,
     ATTR_HIDDEN     = 0x02,
@@ -124,6 +132,12 @@ typedef enum {
     ATTR_LONG_NAME  = ATTR_READ_ONLY    | ATTR_HIDDEN |
                       ATTR_SYSTEM       | ATTR_VOLUME_ID, 
 } FAT32_Dir_Attr;
+
+// FAT32 file "types"
+typedef enum {
+    TYPE_DIR,
+    TYPE_FILE,
+} File_Type;
 
 extern const Guid ESP_GUID;
 extern const Guid LINUX_DATA_GUID;
