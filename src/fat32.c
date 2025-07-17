@@ -48,13 +48,12 @@ bool write_esp(FILE* image) {
         .FSI_Reserved1 = {0},
         .FSI_StrucSig = 0x61417272,
         .FSI_Free_Count = 0xFFFFFFFF,
-        .FSI_Next_Free = 5,
+        .FSI_Next_Free = 0xFFFFFFFF,
         .FSI_Reserved2 = {0},
         .FSI_TrailSig = 0xAA550000,
     };
 
-    const uint32_t local_fat_lba = esp_lba + vbr.BPB_RsvdSecCnt;
-    const uint32_t local_data_lba = esp_lba + (vbr.BPB_NumFATs * vbr.BPB_FATSz32);
+    const uint32_t 
 
     // write vbr and fs info
     fseek(image, esp_lba * LBA_SIZE, SEEK_SET);
@@ -86,8 +85,9 @@ bool write_esp(FILE* image) {
     write_full_lba_size(image);
     
     // write FATs
+    const uint32_t fat_lba = esp_lba + vbr.BPB_RsvdSecCnt;
     for (uint8_t i = 0; i < vbr.BPB_NumFATs; i++) {
-        fseek(image, (local_fat_lba + (i*vbr.BPB_FATSz32)) * LBA_SIZE, SEEK_SET); 
+        fseek(image, (fat_lba + (i*vbr.BPB_FATSz32)) * LBA_SIZE, SEEK_SET); 
         uint32_t cluster = 0;
         
         // cluster 0 reserved; FAT identifier, lowest 8 bits are media type
@@ -114,7 +114,8 @@ bool write_esp(FILE* image) {
     }
 
     // write file data
-    fseek(image, local_data_lba * LBA_SIZE, SEEK_SET);
+    const uint32_t data_lba = fat_lba + (vbr.BPB_NumFATs * vbr.BPB_FATSz32);
+    fseek(image, data_lba * LBA_SIZE, SEEK_SET);
 
     // root directory
     FAT32_Dir_Entry_Short dir_ent = {
@@ -143,7 +144,7 @@ bool write_esp(FILE* image) {
     fwrite(&dir_ent, sizeof dir_ent, 1, image);
     
     // "/EFI" directory entries
-    fseek(image, (local_data_lba + 1) * LBA_SIZE, SEEK_SET);
+    fseek(image, (data_lba + 1) * LBA_SIZE, SEEK_SET);
     
     memcpy(dir_ent.DIR_Name, ".          ", 11);    // "." dir entry, this directory itself
     fwrite(&dir_ent, sizeof dir_ent, 1, image);
@@ -157,7 +158,7 @@ bool write_esp(FILE* image) {
     fwrite(&dir_ent, sizeof dir_ent, 1, image);
 
     // "/EFI/BOOT" directory
-    fseek(image, (local_data_lba + 2) * LBA_SIZE, SEEK_SET);
+    fseek(image, (data_lba + 2) * LBA_SIZE, SEEK_SET);
     
     memcpy(dir_ent.DIR_Name, ".          ", 11);    // "." dir entry, this directory itself
     fwrite(&dir_ent, sizeof dir_ent, 1, image);
@@ -169,43 +170,6 @@ bool write_esp(FILE* image) {
     return true;
 }
 
-bool add_path_to_esp(char *path, FILE *image) {
-    // Parse input path
-    if (*path != '/') return false; // path must begin with root
-    
-    File_Type type = TYPE_DIR;
-    char *start = path+1; //skip initial slash
-    char *end = start;
-    uint32_t dir_cluster = 2;
-
-    // Get next name form path
-    while(type = TYPE_DIR) {
-        while (*end != '/' && *end != '\0') end++;
-
-        if (*end == '/') {
-            type = TYPE_DIR;
-        } else {
-            type = TYPE_FILE;
-        }
-        *end = '\0';    // Null terminates in case of directory
-        
-        // Search for name in curr directory entries
-        FAT32_Dir_Entry_Short dir_entry = { 0 };
-        bool found = false;
-        fseek(image, (fat32_data_lba + dir_cluster - 2) * LBA_SIZE, SEEK_SET);
-        do {
-            fread(&dir_entry, 1, sizeof dir_entry, image);
-            if (!memcmp(dir_entry.DIR_Name, start, sizeof dir_entry.DIR_Name)) {
-                found = true;
-                break;
-            };
-        }
-        while (dir_entry.DIR_Name[0] != '\0');
-    
-        if (!found) {
-            //TODO: 
-        }
-    }
-
+bool add_path_to_esp() {
     return true;
 }
