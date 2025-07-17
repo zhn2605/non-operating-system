@@ -53,7 +53,7 @@ bool write_esp(FILE* image) {
         .FSI_TrailSig = 0xAA550000,
     };
 
-    const uint32_t 
+    // const uint32_t 
 
     // write vbr and fs info
     fseek(image, esp_lba * LBA_SIZE, SEEK_SET);
@@ -170,6 +170,6 @@ bool write_esp(FILE* image) {
     return true;
 }
 
-bool add_path_to_esp() {
-    return true;
-}
+// bool add_path_to_esp() {
+//     return true;
+// }
