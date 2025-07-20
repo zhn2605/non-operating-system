@@ -4,3 +4,9 @@ write_gpt
 *.img
 
 .vscode/
+
+# Rust
+/os/target/
+/os/Cargo.lock
+**/*.rs.bk
+*.pdb
