@@ -10,3 +10,5 @@ write_gpt
 /os/Cargo.lock
 **/*.rs.bk
 *.pdb
+gpt-tool/src/BOOTx64.EFI
+gpt-tool/main
