@@ -16,7 +16,7 @@ uint64_t    image_size_lbas = 0, esp_size_lbas = 0, data_size_lbas = 0,
 uint64_t    align_lba = 0, esp_lba = 0, data_lba = 0, 
             fat32_fat_lba = 0, fat32_data_lba = 0;             // Starting LBA values
 
-            uint32_t crc_table[256];
+uint32_t crc_table[256];
 
 // Convert bytes to LBAs
 uint64_t bytes_to_lbas(const uint64_t bytes) {

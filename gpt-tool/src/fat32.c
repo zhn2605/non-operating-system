@@ -174,7 +174,7 @@ bool add_file_to_esp(char *file_name, FILE *image, File_Type type, uint32_t pare
 
     FSInfo fsinfo = { 0 };
     fseek(image, (esp_lba + 1) * LBA_SIZE, SEEK_SET);
-    fread(&vbr, sizeof fsinfo, 1, image);
+    fread(&fsinfo, sizeof fsinfo, 1, image);
 
     // Get file size if file
     FILE *new_file = NULL;
@@ -182,6 +182,7 @@ bool add_file_to_esp(char *file_name, FILE *image, File_Type type, uint32_t pare
     if (type == TYPE_FILE) {
         new_file = fopen(file_name, "rb");
         if (!new_file) return false;
+
         fseek(new_file, 0, SEEK_END);
         file_size_bytes = ftell(new_file);
         file_size_lbas = bytes_to_lbas(file_size_bytes);
@@ -194,7 +195,7 @@ bool add_file_to_esp(char *file_name, FILE *image, File_Type type, uint32_t pare
 
     // Add new clusters to FATs
     for (uint8_t i = 0; i < vbr.BPB_NumFATs; i++) {
-        fseek(image, (fat32_data_lba + (i * vbr.BPB_FATSz32)) * LBA_SIZE, SEEK_SET);
+        fseek(image, (fat32_fat_lba + (i * vbr.BPB_FATSz32)) * LBA_SIZE, SEEK_SET);
         fseek(image, next_free_cluster * sizeof next_free_cluster, SEEK_CUR);
 
         uint32_t cluster = fsinfo.FSI_Next_Free;
@@ -216,13 +217,14 @@ bool add_file_to_esp(char *file_name, FILE *image, File_Type type, uint32_t pare
     // Update next free cluster
     fsinfo.FSI_Next_Free = next_free_cluster;
     fseek(image, (esp_lba + 1) * LBA_SIZE, SEEK_SET);
-    fread(&fsinfo, sizeof fsinfo, 1, image);
+    fwrite(&fsinfo, sizeof fsinfo, 1, image);
 
     // Go to Parent Directory's data location
     fseek(image, (fat32_data_lba + parent_dir_cluster - 2) * LBA_SIZE, SEEK_SET);
     
     // Add new directory entry for this new dir/file
     FAT32_Dir_Entry_Short dir_entry = { 0 };
+
     fread(&dir_entry, 1, sizeof dir_entry, image);
     while (dir_entry.DIR_Name[0] != '\0') {
         fread(&dir_entry, 1, sizeof dir_entry, image);
@@ -277,7 +279,6 @@ bool add_file_to_esp(char *file_name, FILE *image, File_Type type, uint32_t pare
 }
 
 bool add_path_to_esp(char *path, FILE *image) {
-    
     if (*path != '/') return false; // Path must begin with root '/'
 
     File_Type type = TYPE_DIR;
@@ -302,7 +303,6 @@ bool add_path_to_esp(char *path, FILE *image) {
         FAT32_Dir_Entry_Short dir_entry = { 0 };
         bool found = false;
         fseek(image, (fat32_data_lba + dir_cluster - 2) * LBA_SIZE, SEEK_SET);
-        fread(&dir_entry, 1, sizeof dir_entry, image);
         do {
             fread(&dir_entry, 1, sizeof dir_entry, image);
             if (!memcmp(dir_entry.DIR_Name, start, sizeof dir_entry.DIR_Name)) {

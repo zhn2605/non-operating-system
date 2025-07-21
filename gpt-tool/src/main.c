@@ -60,6 +60,7 @@ int main(void) {
         if (!add_path_to_esp(path, image)) {
             fprintf(stderr, "Error: Could not add file '%s'\n", path);
         }
+        free(path);
     }
 
     fclose(image);
