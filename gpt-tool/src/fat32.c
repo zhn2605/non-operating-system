@@ -166,7 +166,74 @@ bool write_esp(FILE* image) {
     return true;
 }
 
-bool add_file_to_esp(char *file_name, FILE *image, File_Type type, uint32_t parent_dir_cluster) {
+// Helper function to compare null-terminated string with FAT32 directory name
+static bool fat32_name_matches(const char dir_name[11], const char *str) {
+    int str_len = strlen(str);
+    if (str_len > 11) return false;
+    
+    // Compare the string part (case-insensitive)
+    for (int i = 0; i < str_len; i++) {
+        char dir_char = dir_name[i];
+        char str_char = str[i];
+        // Convert to uppercase for comparison
+        if (str_char >= 'a' && str_char <= 'z') {
+            str_char = str_char - 'a' + 'A';
+        }
+        if (dir_char != str_char) return false;
+    }
+    
+    // Check that remaining bytes are spaces (0x20)
+    for (int i = str_len; i < 11; i++) {
+        if (dir_name[i] != ' ') return false;
+    }
+    
+    return true;
+}
+
+// Helper function to format filename for FAT32 (8.3 format or space-padded for directories)
+static void format_fat32_name(char fat_name[11], const char *filename, File_Type type) {
+    memset(fat_name, ' ', 11);  // Fill with spaces
+    
+    if (type == TYPE_DIR) {
+        // For directories, just copy the name and space-pad
+        int len = strlen(filename);
+        if (len > 11) len = 11;
+        memcpy(fat_name, filename, len);
+        // Convert to uppercase
+        for (int i = 0; i < len; i++) {
+            if (fat_name[i] >= 'a' && fat_name[i] <= 'z') {
+                fat_name[i] = fat_name[i] - 'a' + 'A';
+            }
+        }
+    } else {
+        // For files, use 8.3 format
+        const char *dot = strrchr(filename, '.');
+        if (dot) {
+            // Has extension
+            int name_len = dot - filename;
+            if (name_len > 8) name_len = 8;
+            memcpy(fat_name, filename, name_len);
+            
+            int ext_len = strlen(dot + 1);
+            if (ext_len > 3) ext_len = 3;
+            memcpy(fat_name + 8, dot + 1, ext_len);
+        } else {
+            // No extension
+            int name_len = strlen(filename);
+            if (name_len > 8) name_len = 8;
+            memcpy(fat_name, filename, name_len);
+        }
+        
+        // Convert to uppercase
+        for (int i = 0; i < 11; i++) {
+            if (fat_name[i] >= 'a' && fat_name[i] <= 'z') {
+                fat_name[i] = fat_name[i] - 'a' + 'A';
+            }
+        }
+    }
+}
+
+uint32_t add_file_to_esp(char *file_name, FILE *image, File_Type type, uint32_t parent_dir_cluster) {
     // Get FAT32 fs info for VBR 
     Vbr vbr =  { 0 };
     fseek(image, esp_lba * LBA_SIZE, SEEK_SET);
@@ -181,7 +248,7 @@ bool add_file_to_esp(char *file_name, FILE *image, File_Type type, uint32_t pare
     uint64_t file_size_bytes = 0, file_size_lbas = 0;
     if (type == TYPE_FILE) {
         new_file = fopen(file_name, "rb");
-        if (!new_file) return false;
+        if (!new_file) return 0; // Return 0 to indicate error
 
         fseek(new_file, 0, SEEK_END);
         file_size_bytes = ftell(new_file);
@@ -233,7 +300,7 @@ bool add_file_to_esp(char *file_name, FILE *image, File_Type type, uint32_t pare
     // size of dir_entry = 32, back up to overwrite empty spot
     fseek(image, -32, SEEK_CUR);        
    
-    memcpy(dir_entry.DIR_Name, file_name, strlen(file_name));
+    format_fat32_name((char *)dir_entry.DIR_Name, file_name, type);
     if (type == TYPE_DIR) {
         dir_entry.DIR_Attr = ATTR_DIRECTORY;
     }
@@ -275,7 +342,7 @@ bool add_file_to_esp(char *file_name, FILE *image, File_Type type, uint32_t pare
         }
         free(file_buf);
     }
-    return true;
+    return starting_cluster;
 }
 
 bool add_path_to_esp(char *path, FILE *image) {
@@ -305,17 +372,26 @@ bool add_path_to_esp(char *path, FILE *image) {
         fseek(image, (fat32_data_lba + dir_cluster - 2) * LBA_SIZE, SEEK_SET);
         do {
             fread(&dir_entry, 1, sizeof dir_entry, image);
-            if (!memcmp(dir_entry.DIR_Name, start, sizeof dir_entry.DIR_Name)) {
+            if (fat32_name_matches((const char *)dir_entry.DIR_Name, start)) {
                 // Found name in dir
-                dir_cluster = (dir_entry.DIR_FstClusHI << 16) | dir_entry.DIR_FstClusLO;
                 found = true;
                 break;
             };
         } while (dir_entry.DIR_Name[0] != '\0');
 
         if (!found) {
-            if (!add_file_to_esp(start, image, type, dir_cluster))
+            uint32_t new_cluster = add_file_to_esp(start, image, type, dir_cluster);
+            if (new_cluster == 0)
                 return false;
+            // If we created a directory, update dir_cluster to navigate into it
+            if (type == TYPE_DIR) {
+                dir_cluster = new_cluster;
+            }
+        } else {
+            // If we found an existing entry, update dir_cluster to navigate into it if it's a directory
+            if (type == TYPE_DIR) {
+                dir_cluster = (dir_entry.DIR_FstClusHI << 16) | dir_entry.DIR_FstClusLO;
+            }
         }
 
         *end++ = '/';
