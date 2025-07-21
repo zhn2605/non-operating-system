@@ -51,11 +51,12 @@ int main(void) {
     }
 
     // Check if "BOOTx64.EFI" file exists in curr directory and automatically add it to ESP
-    FILE *fp = fopen("BOOTX64.EFI", "rb");
+    FILE *fp = fopen("BOOTx64.efi", "rb");
     if(fp) {
+        printf("Found file!");
         fclose(fp);
         char *path = calloc(1, 25);
-        strcpy(path, "/EFI/BOOT/BOOTX64.EFI");
+        strcpy(path, "/EFI/BOOT/BOOTx64.efi");
         if (!add_path_to_esp(path, image)) {
             fprintf(stderr, "Error: Could not add file '%s'\n", path);
         }

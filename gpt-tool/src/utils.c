@@ -7,13 +7,16 @@
 #include "gpt_constants.h"
 
 char *image_name = "test.img";
-uint64_t esp_size = 1024*1024*33;
-uint64_t data_size = 1024*1024*1;
-uint64_t image_size = 0;
-uint64_t image_size_lbas = 0, esp_size_lbas = 0, data_size_lbas = 0,
-        gpt_table_lbas = 0;
-uint64_t align_lba = 0, esp_lba = 0, data_lba = 0;
-uint32_t crc_table[256];
+
+uint64_t    esp_size = 1024*1024*33;    // 33 MiB
+uint64_t    data_size = 1024*1024*1;    // 1 MiB
+uint64_t    image_size = 0;
+uint64_t    image_size_lbas = 0, esp_size_lbas = 0, data_size_lbas = 0,
+            gpt_table_lbas = 0;                                 // Sizes in lbas
+uint64_t    align_lba = 0, esp_lba = 0, data_lba = 0, 
+            fat32_fat_lba = 0, fat32_data_lba = 0;             // Starting LBA values
+
+            uint32_t crc_table[256];
 
 // Convert bytes to LBAs
 uint64_t bytes_to_lbas(const uint64_t bytes) {
@@ -23,7 +26,7 @@ uint64_t bytes_to_lbas(const uint64_t bytes) {
 
 void write_full_lba_size(FILE* image) {
     uint64_t lba_size = LBA_SIZE;
-    uint8_t zero_sector[512] = {0};
+    uint8_t zero_sector[512] = { 0 };
     for (uint8_t i = 0; i < (lba_size - sizeof zero_sector) / sizeof zero_sector; i++) {
         fwrite(zero_sector, sizeof zero_sector, 1, image);
     }
