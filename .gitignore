@@ -6,8 +6,8 @@ write_gpt
 .vscode/
 
 # Rust
-/os/target/
-/os/Cargo.lock
+**/Cargo.lock
+bootloader/target/
 **/*.rs.bk
 *.pdb
 gpt-tool/src/BOOTx64.EFI
