@@ -1,15 +1,14 @@
 *.o
 write_gpt
-
 *.img
-
 .vscode/
 
 # Rust
 **/Cargo.lock
 kernel/target/
-bootloader/target/
 **/*.rs.bk
 *.pdb
-gpt-tool/src/BOOTx64.EFI
+gpt-tool/BOOTx64.efi
 gpt-tool/main
+
+bootloader/target/
