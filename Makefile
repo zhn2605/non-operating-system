@@ -36,7 +36,7 @@ clean:
 test: image
 	@if [ -f gpt-tool/qemu.sh ]; then \
 		echo "Running QEMU test..."; \
-		cd gpt-tool && ./qemu.sh; \
+		cd gpt-tool && sh ./qemu.sh; \
 	else \
 		echo "qemu.sh not found, skipping test"; \
 	fi
