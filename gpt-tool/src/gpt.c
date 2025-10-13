@@ -19,7 +19,7 @@ const Guid LINUX_DATA_GUID = {
 // Write GPT headers & tables, primary and alternate
 bool write_gpt(FILE *image, uint64_t image_size_lbas) {
     Gpt_Header primary_gpt = {
-        .signature = { "EFI PART" },
+        .signature = { 'E','F','I',' ','P','A','R','T' },
         .revision = 0x00010000,
         .header_size = 92,  // vers 1
         .header_crc32 = 0,  // calculated later

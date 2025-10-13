@@ -4,10 +4,18 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+uefi = { version = "0.35.0", features = [ "logger" ] }
 log = "0.4.27"
-uefi = { version = "0.35.0", features = ["logger", "panic_handler"] }
 
 [[bin]]
 target = "x86_64-unkown-uefi"
 name = "BOOTx64"
 path = "src/main.rs"
+bench = false
+test = false
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
