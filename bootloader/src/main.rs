@@ -3,7 +3,7 @@
 
 use core::panic::PanicInfo;
 use uefi::boot::{self, SearchType, ScopedProtocol};
-use uefi::system;
+use uefi::{system, table};
 use uefi::prelude::*;
 use uefi::proto::device_path::text::{
     AllowShortcuts, DevicePathToText, DisplayOnly,
@@ -18,9 +18,11 @@ fn main() -> Status {
     info!("Hello world!");
     warn!("WARN test");
     error!("ERORR test");
+
     print_image_path().unwrap();
 
-    boot::stall(10_000_000);
+    wait_for_keypress();
+
     Status::SUCCESS
 }
 
@@ -50,6 +52,23 @@ fn print_image_path() -> Result {
 
     info!("Image path: {}", &*image_device_path_text);
     Ok(())
+}
+
+fn wait_for_keypress() -> Result {
+    info!("Press a key to continue...");
+
+    system::with_stdin(|stdin| {
+        stdin.reset(true)?;
+        // Reset input buffer
+
+        let mut key_press_event = unsafe { [stdin.wait_for_key_event().expect("Expected wait event")] };
+        // Retrieve key press event
+
+        boot::wait_for_event(&mut key_press_event).unwrap();
+        // Note newer versions of UEFI automatically sets up systemtable and image handle
+
+        Ok(())
+    })
 }
 
 #[panic_handler]
