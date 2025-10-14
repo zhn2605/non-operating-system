@@ -3,7 +3,8 @@
 
 use core::panic::PanicInfo;
 use uefi::boot::{self, SearchType, ScopedProtocol};
-use uefi::{system, table};
+use uefi::system; 
+use uefi::table;
 use uefi::prelude::*;
 use uefi::proto::device_path::text::{
     AllowShortcuts, DevicePathToText, DisplayOnly,
@@ -15,13 +16,17 @@ use log::{info, warn, error};
 #[entry]
 fn main() -> Status {
     uefi::helpers::init().unwrap();
+    // Note newer versions of UEFI automatically sets up systemtable and image handle
+    
     info!("Hello world!");
     warn!("WARN test");
     error!("ERORR test");
 
     print_image_path().unwrap();
 
-    wait_for_keypress();
+    list_info().unwrap();
+
+    wait_for_keypress().unwrap();
 
     Status::SUCCESS
 }
@@ -54,6 +59,21 @@ fn print_image_path() -> Result {
     Ok(())
 }
 
+fn list_info() -> Result {
+    info!("Image Handle: {:#018x}", boot::image_handle as usize);
+    info!("System Table: {:#018x}", table::system_table_raw as usize);
+    info!("UEFI Revision: {}", system::uefi_revision());
+
+    info!("List of CFGs: ");
+    system::with_config_table(|config_table| {
+        for cfg in config_table {
+            info!("Ptr: {:#018x}, GUID: {}", cfg.address as usize, cfg.guid)
+        }
+
+        Ok(())
+    })
+}
+
 fn wait_for_keypress() -> Result {
     info!("Press a key to continue...");
 
@@ -61,11 +81,10 @@ fn wait_for_keypress() -> Result {
         stdin.reset(true)?;
         // Reset input buffer
 
-        let mut key_press_event = unsafe { [stdin.wait_for_key_event().expect("Expected wait event")] };
+        let mut key_press_event = [stdin.wait_for_key_event().expect("Expected wait event")];
         // Retrieve key press event
 
         boot::wait_for_event(&mut key_press_event).unwrap();
-        // Note newer versions of UEFI automatically sets up systemtable and image handle
 
         Ok(())
     })
