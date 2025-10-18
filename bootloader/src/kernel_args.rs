@@ -7,6 +7,8 @@ pub struct KernelArgs {
     smbios_ptr: *const c_void,
     acpi_ver: u8,
     smbios_ver: u8,
+    // pointer to PCI Express Ecam space
+    pcie_ptr: *mut c_void,
 }
 
 impl Default for KernelArgs {
@@ -16,6 +18,7 @@ impl Default for KernelArgs {
             smbios_ptr: 0 as *const c_void,
             acpi_ver: 0,
             smbios_ver: 0,
+            pcie_ptr: 0 as *mut c_void,
         }
     }
 }
@@ -59,5 +62,13 @@ impl KernelArgs {
 
     pub fn get_smbios(&self) -> (*const c_void, u8) {
         (self.smbios_ptr, self.smbios_ver)
+    }
+
+    pub fn set_pcie(&mut self, ptr: *mut c_void) {
+        self.pcie_ptr = ptr
+    }
+
+    pub fn get_pcie(&self) -> *mut c_void {
+        self.pcie_ptr
     }
 }

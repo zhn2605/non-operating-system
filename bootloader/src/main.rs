@@ -91,21 +91,29 @@ fn list_info(list_cfg : bool, list_kargs: bool) -> Result {
 
     let karg = RefCell::new(KernelArgs::default());
     // Necessary for interior mutability because with_config_table forces non mutable Fn
-    if list_kargs {
-        info!("Empty karg: {:?}", karg.borrow());
-        system::with_config_table(|config_table| {
-            karg.borrow_mut().populate_from_cfg_table(config_table);
-        });
-        info!("Populated karg: {:?}", karg.borrow());
-    }
+    info!("Empty karg: {:?}", karg.borrow());
+    system::with_config_table(|config_table| {
+        karg.borrow_mut().populate_from_cfg_table(config_table);
+    });
 
     let ih: IdentityAcpiHandler  = IdentityAcpiHandler;
     let acpi_tables = unsafe { AcpiTables::from_rsdp(ih, karg.borrow().get_acpi().0 as usize)}.unwrap();
     info!("ACPI Revision: {}", acpi_tables.rsdp_revision);
 
     let pcie_cfg = PciConfigRegions::new(&acpi_tables).unwrap();
-    let pcie_first_addr = pcie_cfg.physical_address(0, 0, 0, 0).unwrap();
-    info!("PCIe(0, 0, 0, 0): {:#018x}", pcie_first_addr);
+    // loop through all poossible segments for pcie
+    for sg in 0u16..=65535u16 {
+        if let Some(addr) = pcie_cfg.physical_address(sg, 0, 0, 0) {
+            // populate first segment into karg presuming it attaches to everything needed for basic computing functions (AHCI, GPU, USB)
+            karg.borrow_mut().set_pcie(addr as *mut core::ffi::c_void);
+            info!("PCIe({}, 0, 0, 0): {:#018x}", sg, addr);
+            break;
+        }
+    }
+
+    if list_kargs {
+        info!("Populated karg: {:?}", karg.borrow());
+    }
 
     Ok(())
 }
