@@ -2,6 +2,7 @@
 #![no_main]
 
 use core::panic::PanicInfo;
+use core::cell::RefCell;
 use uefi::boot::{self, SearchType, ScopedProtocol};
 use uefi::system; 
 use uefi::table;
@@ -12,6 +13,11 @@ use uefi::proto::device_path::text::{
 use uefi::proto::loaded_image::LoadedImage;
 use uefi::{Identify, Result};
 use log::{info, warn, error};
+
+mod cfg_table_type;
+mod kernel_args;
+use crate::cfg_table_type::CfgTableType;
+use crate::kernel_args::KernelArgs;
 
 #[entry]
 fn main() -> Status {
@@ -24,7 +30,9 @@ fn main() -> Status {
 
     print_image_path().unwrap();
 
-    list_info().unwrap();
+    let list_cfg = false;
+    let list_kargs = true;
+    list_info(list_cfg, list_kargs).unwrap();
 
     wait_for_keypress().unwrap();
 
@@ -59,19 +67,32 @@ fn print_image_path() -> Result {
     Ok(())
 }
 
-fn list_info() -> Result {
+fn list_info(list_cfg : bool, list_kargs: bool) -> Result {
     info!("Image Handle: {:#018x}", boot::image_handle as usize);
     info!("System Table: {:#018x}", table::system_table_raw as usize);
     info!("UEFI Revision: {}", system::uefi_revision());
 
-    info!("List of CFGs: ");
-    system::with_config_table(|config_table| {
-        for cfg in config_table {
-            info!("Ptr: {:#018x}, GUID: {}", cfg.address as usize, cfg.guid)
-        }
+    if list_cfg {
+        info!("List of CFGs: ");
+        system::with_config_table(|config_table| {
+            for cfg in config_table {
+                let cfg_table_name: CfgTableType = cfg.guid.into();
+                info!("Ptr: {:#018x}, GUID: {}", cfg.address as usize, cfg_table_name);
+            }
+        });
+    }
 
-        Ok(())
-    })
+    let karg = RefCell::new(KernelArgs::default());
+    // Necessary for interior mutability because with_config_table forces non mutable Fn
+    if list_kargs {
+        info!("Empty karg: {:?}", karg.borrow());
+        system::with_config_table(|config_table| {
+            karg.borrow_mut().populate_from_cfg_table(config_table);
+        });
+        info!("Populated karg: {:?}", karg.borrow());
+    }
+
+    Ok(())
 }
 
 fn wait_for_keypress() -> Result {
