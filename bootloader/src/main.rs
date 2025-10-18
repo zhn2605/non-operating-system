@@ -1,23 +1,30 @@
 #![no_std]
 #![no_main]
 
-use core::panic::PanicInfo;
-use core::cell::RefCell;
-use uefi::boot::{self, SearchType, ScopedProtocol};
-use uefi::system; 
-use uefi::table;
-use uefi::prelude::*;
-use uefi::proto::device_path::text::{
-    AllowShortcuts, DevicePathToText, DisplayOnly,
-};
-use uefi::proto::loaded_image::LoadedImage;
-use uefi::{Identify, Result};
-use log::{info, warn, error};
-
 mod cfg_table_type;
 mod kernel_args;
+mod identity_acpi_handler;
+
+use core::panic::PanicInfo;
+use core::cell::RefCell;
+use acpi::{platform::PciConfigRegions, AcpiTables};
+use uefi::{
+    boot::{self, SearchType},
+    system,
+    table,
+    prelude::*,
+    proto::device_path::text::{
+        AllowShortcuts, DevicePathToText, DisplayOnly,
+    },
+    proto::loaded_image::LoadedImage,
+    Identify, 
+    Result,
+};
+use log::{info, warn, error};
+
 use crate::cfg_table_type::CfgTableType;
 use crate::kernel_args::KernelArgs;
+use crate::identity_acpi_handler::IdentityAcpiHandler;
 
 #[entry]
 fn main() -> Status {
@@ -92,6 +99,14 @@ fn list_info(list_cfg : bool, list_kargs: bool) -> Result {
         info!("Populated karg: {:?}", karg.borrow());
     }
 
+    let ih: IdentityAcpiHandler  = IdentityAcpiHandler;
+    let acpi_tables = unsafe { AcpiTables::from_rsdp(ih, karg.borrow().get_acpi().0 as usize)}.unwrap();
+    info!("ACPI Revision: {}", acpi_tables.rsdp_revision);
+
+    let pcie_cfg = PciConfigRegions::new(&acpi_tables).unwrap();
+    let pcie_first_addr = pcie_cfg.physical_address(0, 0, 0, 0).unwrap();
+    info!("PCIe(0, 0, 0, 0): {:#018x}", pcie_first_addr);
+
     Ok(())
 }
 
@@ -111,7 +126,8 @@ fn wait_for_keypress() -> Result {
     })
 }
 
-#[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    loop {}
-}
+// #[panic_handler]
+// fn panic(_info: &PanicInfo) -> ! {
+//     error!("[PANIC]: {} at \n{:?}", _info.message(), _info.location());
+//     loop {}
+// }

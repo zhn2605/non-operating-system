@@ -4,11 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-uefi = { version = "0.35.0", features = [ "logger" ] }
+uefi = { version = "0.35.0", features = [ "global_allocator", "panic_handler", "logger" ] }
+acpi = "6.0.1"
 log = "0.4.27"
 
 [[bin]]
-target = "x86_64-unkown-uefi"
+target = "x86_64-unknown-uefi"
 name = "BOOTx64"
 path = "src/main.rs"
 bench = false
