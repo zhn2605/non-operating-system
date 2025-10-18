@@ -1,5 +1,18 @@
 use core::ffi::c_void;
-use uefi::table::cfg::{ACPI_GUID, ACPI2_GUID, ConfigTableEntry, SMBIOS_GUID, SMBIOS3_GUID};
+use core::ptr;
+
+use uefi::{
+    boot, 
+    table::cfg::{ConfigTableEntry, ACPI2_GUID, ACPI_GUID, SMBIOS3_GUID, SMBIOS_GUID}
+};
+
+#[derive(Copy, Clone, Debug)]
+pub struct OSMemEntry {
+    pub mem_type: boot::MemoryType,
+    pub base: usize,
+    pub pages: usize,
+    pub mem_attrib: boot::MemoryAttribute,
+}
 
 #[derive(Copy, Clone, Debug)]
 pub struct KernelArgs {
@@ -9,16 +22,20 @@ pub struct KernelArgs {
     smbios_ver: u8,
     // pointer to PCI Express Ecam space
     pcie_ptr: *mut c_void,
+    memmap_ptr: *mut OSMemEntry,
+    memmap_entries: usize,
 }
 
 impl Default for KernelArgs {
     fn default() -> Self {
         Self {
-            acpi_ptr: 0 as *const c_void,
-            smbios_ptr: 0 as *const c_void,
+            acpi_ptr: ptr::null_mut(),
+            smbios_ptr: ptr::null_mut(),
             acpi_ver: 0,
             smbios_ver: 0,
-            pcie_ptr: 0 as *mut c_void,
+            pcie_ptr: ptr::null_mut(),
+            memmap_ptr: ptr::null_mut(),
+            memmap_entries: 0,
         }
     }
 }
@@ -70,5 +87,18 @@ impl KernelArgs {
 
     pub fn get_pcie(&self) -> *mut c_void {
         self.pcie_ptr
+    }
+
+    pub fn set_memmap(&mut self, ptr: *mut OSMemEntry, entries: usize) {
+        self.memmap_ptr = ptr;
+        self.memmap_entries = entries;
+    }
+
+    pub fn get_memmap(&self) -> *mut OSMemEntry {
+        self.memmap_ptr
+    }
+
+    pub fn get_memmap_entries(&self) -> usize {
+        self.memmap_entries
     }
 }
