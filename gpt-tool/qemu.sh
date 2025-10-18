@@ -1,7 +1,8 @@
 #!/bin/sh
 
 qemu-system-x86_64 \
--drive format=raw,file=test.img \
+-device ide-hd,drive=disk0,model=NOS\ Boot\ Manager,serial=NOSDISK \
+-drive id=disk0,format=raw,file=test.img,if=none \
 -bios /usr/share/edk2-ovmf/x64/OVMF.4m.fd \
--name macaroni-OS \
+-name NOS \
 -net none
