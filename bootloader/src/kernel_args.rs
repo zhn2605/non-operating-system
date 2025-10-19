@@ -1,18 +1,10 @@
+
 use core::ffi::c_void;
 use core::ptr;
+use crate::os_mem::OSMemEntry;
 
-use uefi::{
-    boot, 
-    table::cfg::{ConfigTableEntry, ACPI2_GUID, ACPI_GUID, SMBIOS3_GUID, SMBIOS_GUID}
-};
+use uefi::{table::cfg::{ConfigTableEntry, ACPI2_GUID, ACPI_GUID, SMBIOS3_GUID, SMBIOS_GUID}};
 
-#[derive(Copy, Clone, Debug)]
-pub struct OSMemEntry {
-    pub mem_type: boot::MemoryType,
-    pub base: usize,
-    pub pages: usize,
-    pub mem_attrib: boot::MemoryAttribute,
-}
 
 #[derive(Copy, Clone, Debug)]
 pub struct KernelArgs {
