@@ -1,6 +1,6 @@
 use log::{info, error};
 use uefi::{
-    boot::{self, ScopedProtocol},
+    boot::{self, ScopedProtocol, OpenProtocolParams, OpenProtocolAttributes},
     Handle,
     proto::console::gop::{GraphicsOutput, Mode}, 
     Identify, 
@@ -29,10 +29,17 @@ impl FrameBuffer {
             }
         };
         
+        // Multiple protocols are open why do you do this to me uefi firmware
         let gop_protocols = boot::protocols_per_handle(gop_handle).unwrap();
         info!("handle {:?} protocols: {}", gop_handle, gop_protocols.len());
 
-        let gop = match boot::open_protocol_exclusive::<GraphicsOutput>(gop_handle) {
+        let params = OpenProtocolParams {
+            handle : gop_handle,
+            agent : boot::image_handle(),
+            controller : None,
+        };
+
+        let gop = unsafe { match boot::open_protocol::<GraphicsOutput>(params, OpenProtocolAttributes::GetProtocol) {
             Ok(g) => {
                 info!("Successfully opened GOP protocol!");
                 g
@@ -41,7 +48,7 @@ impl FrameBuffer {
                 error!("Failed to open GraphicsOutput protocol for handle {:?}: {:?}", gop_handle, e.status());
                 return Err(e.status());
             }
-        };
+        } };
 
         // List all modes
         let mut max_size = 0;
