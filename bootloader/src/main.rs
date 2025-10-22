@@ -5,23 +5,14 @@ mod cfg_table_type;
 mod kernel_args;
 mod identity_acpi_handler;
 mod os_mem;
+mod frame_buffer;
 
-use core::{panic::PanicInfo};
 use core::cell::RefCell;
 use acpi::{platform::PciConfigRegions, AcpiTables};
 use uefi::{
-    Status,
-    boot::{self, SearchType},
-    mem::memory_map::{self, MemoryMap, MemoryMapMeta},
-    system,
-    table,
-    prelude::*,
-    proto::device_path::text::{
+    boot::{self, SearchType}, mem::memory_map::{self, MemoryMap, MemoryMapMeta}, prelude::*, proto::{console::gop::GraphicsOutput, device_path::text::{
         AllowShortcuts, DevicePathToText, DisplayOnly,
-    },
-    proto::loaded_image::LoadedImage,
-    Identify, 
-    Result,
+    }, loaded_image::LoadedImage}, system, table, Identify, Result, Status
 };
 use log::{info, warn, error};
 
@@ -29,21 +20,26 @@ use crate::cfg_table_type::CfgTableType;
 use crate::kernel_args::KernelArgs;
 use crate::identity_acpi_handler::IdentityAcpiHandler;
 use crate::os_mem::OSMemEntry;
+use crate::frame_buffer::FrameBuffer;
 
 #[entry]
 fn main() -> Status {
     uefi::helpers::init().unwrap();
     // Note newer versions of UEFI automatically sets up systemtable and image handle
-    
+
     info!("Hello world!");
     warn!("WARN test");
     error!("ERORR test");
 
     print_image_path().unwrap();
+    wait_for_keypress().unwrap();
 
     let list_info = true;
     populate_karg(list_info).unwrap();
+    wait_for_keypress().unwrap();
 
+    // init frambuffer
+    let fb = FrameBuffer::init().unwrap();
     wait_for_keypress().unwrap();
 
     Status::SUCCESS
@@ -147,8 +143,6 @@ fn get_mm() -> (*mut OSMemEntry, usize) {
     let mm_owned = boot::memory_map(memory_map::MemoryType::BOOT_SERVICES_DATA).unwrap();
     // Retrieve ncessary map info
     let meta: MemoryMapMeta = mm_owned.meta();
-    let map_size: usize = meta.map_size;
-    let desc_size: usize = meta.desc_size;
     let entry_count: usize = meta.entry_count();
 
     //  Allocate runtime buffer to store translated osmm entry list
