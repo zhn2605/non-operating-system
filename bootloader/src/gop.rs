@@ -1,19 +1,17 @@
 use log::{info, error};
 use uefi::{
-    boot::{self, ScopedProtocol, OpenProtocolParams, OpenProtocolAttributes},
-    Handle,
-    proto::console::gop::{GraphicsOutput, Mode}, 
-    Identify, 
+    boot::{self, OpenProtocolAttributes, OpenProtocolParams, ScopedProtocol}, 
+    proto::console::gop::{GraphicsOutput, Mode},
     Status
 };
 
 #[derive(Debug)]
-pub struct FrameBuffer {
+pub struct Gop {
     gop: ScopedProtocol<GraphicsOutput>,
     mode: Mode,
 }
 
-impl FrameBuffer {
+impl Gop {
     pub fn init() -> Result<Self, Status> {
         info!("Started initializing..");
 
@@ -79,7 +77,7 @@ impl FrameBuffer {
         })
     }
 
-    // fn get_gop() -> Result<ScopedProtocol<GraphicsOutput>, Status> {
-
-    // }
+    pub fn set_mode(&mut self) -> Result<(), uefi::Error> {
+        self.gop.set_mode(&self.mode)
+    }
 }

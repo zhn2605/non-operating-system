@@ -5,7 +5,7 @@ mod cfg_table_type;
 mod kernel_args;
 mod identity_acpi_handler;
 mod os_mem;
-mod frame_buffer;
+mod gop;
 
 use core::cell::RefCell;
 use acpi::{platform::PciConfigRegions, AcpiTables};
@@ -20,7 +20,7 @@ use crate::cfg_table_type::CfgTableType;
 use crate::kernel_args::KernelArgs;
 use crate::identity_acpi_handler::IdentityAcpiHandler;
 use crate::os_mem::OSMemEntry;
-use crate::frame_buffer::FrameBuffer;
+use crate::gop::Gop;
 
 #[entry]
 fn main() -> Status {
@@ -39,8 +39,11 @@ fn main() -> Status {
     wait_for_keypress().unwrap();
 
     // init frambuffer
-    let fb = FrameBuffer::init().unwrap();
+    let mut gop = Gop::init().unwrap();
+    warn!("Will switch over to graphic output after the following keypress!");
     wait_for_keypress().unwrap();
+
+    gop.set_mode().unwrap();
 
     Status::SUCCESS
 }
